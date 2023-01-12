@@ -1,0 +1,1356 @@
+Understanding GitHub Actions
+In this article
+
+Overview
+The components of GitHub Actions
+Workflows
+Events
+Jobs
+Actions
+Runners
+Create an example workflow
+Understanding the workflow file
+Visualizing the workflow file
+Viewing the activity for a workflow run
+Next steps
+Contacting support
+
+Learn the basics of GitHub Actions, including core concepts and essential terminology.
+Overview
+GitHub Actions is a continuous integration and continuous delivery (CI/CD) platform that allows you to automate your build, test, and deployment pipeline. You can create workflows that build and test every pull request to your repository or deploy merged pull requests to production.
+GitHub Actions goes beyond just DevOps and lets you run workflows when other events happen in your repository. For example, you can run a workflow to automatically add the appropriate labels whenever someone creates a new issue in your repository.
+GitHub provides Linux, Windows, and macOS virtual machines to run your workflows, or you can host your own self-hosted runners in your own data center or cloud infrastructure.
+The components of GitHub Actions
+You can configure a GitHub Actions workflow to be triggered when an event occurs in your repository, such as a pull request being opened, or an issue being created. Your workflow contains one or more jobs which can run in sequential order or in parallel. Each job will run inside its own virtual machine runner, or inside a container, and has one or more steps that either run a script that you define or run an action, which is a reusable extension that can simplify your workflow.
+ 
+Workflows
+A workflow is a configurable automated process that will run one or more jobs. Workflows are defined by a YAML file checked in to your repository and will run when triggered by an event in your repository, or they can be triggered manually, or at a defined schedule.
+Workflows are defined in the .github/workflows directory in a repository, and a repository can have multiple workflows, each of which can perform a different set of tasks. For example, you can have one workflow to build and test pull requests, another workflow to deploy your application every time a release is created, and still another workflow that adds a label every time someone opens a new issue.
+You can reference a workflow within another workflow, see "Reusing workflows."
+For more information about workflows, see "Using workflows."
+Events
+An event is a specific activity in a repository that triggers a workflow run. For example, activity can originate from GitHub when someone creates a pull request, opens an issue, or pushes a commit to a repository. You can also trigger a workflow run on a schedule, by posting to a REST API, or manually.
+For a complete list of events that can be used to trigger workflows, see Events that trigger workflows.
+Jobs
+A job is a set of steps in a workflow that execute on the same runner. Each step is either a shell script that will be executed, or an action that will be run. Steps are executed in order and are dependent on each other. Since each step is executed on the same runner, you can share data from one step to another. For example, you can have a step that builds your application followed by a step that tests the application that was built.
+You can configure a job's dependencies with other jobs; by default, jobs have no dependencies and run in parallel with each other. When a job takes a dependency on another job, it will wait for the dependent job to complete before it can run. For example, you may have multiple build jobs for different architectures that have no dependencies, and a packaging job that is dependent on those jobs. The build jobs will run in parallel, and when they have all completed successfully, the packaging job will run.
+For more information about jobs, see "Using jobs."
+Actions
+An action is a custom application for the GitHub Actions platform that performs a complex but frequently repeated task. Use an action to help reduce the amount of repetitive code that you write in your workflow files. An action can pull your git repository from GitHub, set up the correct toolchain for your build environment, or set up the authentication to your cloud provider.
+You can write your own actions, or you can find actions to use in your workflows in the GitHub Marketplace.
+For more information, see "Creating actions."
+Runners
+A runner is a server that runs your workflows when they're triggered. Each runner can run a single job at a time. GitHub provides Ubuntu Linux, Microsoft Windows, and mwinwiacOS runners to run your workflows; each workflow run executes in a fresh, newly-provisioned virtual machine. GitHub also offers larger runners, which are available in larger configurations. For more information, see "Using larger runners." If you need a different operating system or require a specific hardware configuration, you can host your own runners. For more information about self-hosted runners, see "Hosting your own runners."
+Create an example workflow
+GitHub Actions uses YAML syntax to define the workflow. Each workflow is stored as a separate YAML file in your code repository, in a directory named .github/workflows.
+You can create an example workflow in your repository that automatically triggers a series of commands whenever code is pushed. In this workflow, GitHub Actions checks out the pushed code, installs the bats testing framework, and runs a basic command to output the bats version: bats -v.
+In your repository, create the .github/workflows/ directory to store your workflow files.
+In the .github/workflows/ directory, create a new file called learn-github-actions.yml and add the following code.
+YAML
+name: learn-github-actions
+run-name: ${{ github.actor }} is learning GitHub Actions
+on: [push]
+jobs:
+  check-bats-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+      - run: npm install -g bats
+      - run: bats -v
+Commit these changes and push them to your GitHub repository.
+Your new GitHub Actions workflow file is now installed in your repository and will run automatically each time someone pushes a change to the repository. To see the details about a workflow's execution history, see "Viewing the activity for a workflow run."
+Understanding the workflow file
+To help you understand how YAML syntax is used to create a workflow file, this section explains each line of the introduction's example:
+name: learn-github-actions
+	Optional - The name of the workflow as it will appear in the "Actions" tab of the GitHub repository.
+run-name: ${{ github.actor }} is learning GitHub Actions
+	Optional - The name for workflow runs generated from the workflow, which will appear in the list of workflow runs on your repository's "Actions" tab. This example uses an expression with the github context to display the username of the actor that triggered the workflow run. For more information, see "Workflow syntax for GitHub Actions."
+
+on: [push]
+	Specifies the trigger for this workflow. This example uses the push event, so a workflow run is triggered every time someone pushes a change to the repository or merges a pull request. This is triggered by a push to every branch; for examples of syntax that runs only on pushes to specific branches, paths, or tags, see "Workflow syntax for GitHub Actions."
+
+jobs:
+	Groups together all the jobs that run in the learn-github-actions workflow.
+check-bats-version:
+	Defines a job named check-bats-version. The child keys will define properties of the job.
+  runs-on: ubuntu-latest
+	Configures the job to run on the latest version of an Ubuntu Linux runner. This means that the job will execute on a fresh virtual machine hosted by GitHub. For syntax examples using other runners, see "Workflow syntax for GitHub Actions."
+
+  steps:
+	Groups together all the steps that run in the check-bats-version job. Each item nested under this section is a separate action or shell script.
+    - uses: actions/checkout@v3
+	The uses keyword specifies that this step will run v3 of the actions/checkout action. This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools). You should use the checkout action any time your workflow will run against the repository's code.
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+	This step uses the actions/setup-node@v3 action to install the specified version of the Node.js (this example uses v14). This puts both the node and npm commands in your PATH.
+    - run: npm install -g bats
+	The run keyword tells the job to execute a command on the runner. In this case, you are using npm to install the bats software testing package.
+    - run: bats -v
+	Finally, you'll run the bats command with a parameter that outputs the software version.
+Visualizing the workflow file
+In this diagram, you can see the workflow file you just created and how the GitHub Actions components are organized in a hierarchy. Each step executes a single action or shell script. Steps 1 and 2 run actions, while steps 3 and 4 run shell scripts. To find more prebuilt actions for your workflows, see "Finding and customizing actions."
+ 
+Viewing the activity for a workflow run
+When your workflow is triggered, a workflow run is created that executes the workflow. After a workflow run has started, you can see a visualization graph of the run's progress and view each step's activity on GitHub.
+On GitHub.com, navigate to the main page of the repository.
+Under your repository name, click Actions.
+ 
+
+
+
+
+
+
+
+In the left sidebar, click the workflow you want to see.
+ 
+Under "Workflow runs", click the name of the run you want to see.
+ 
+Under Jobs or in the visualization graph, click the job you want to see.
+ 
+View the results of each step.
+ 
+
+
+Next steps
+GitHub Actions can help you automate nearly every aspect of your application development processes. Ready to get started? Here are some helpful resources for taking your next steps with GitHub Actions:
+For continuous integration (CI) workflows to build and test your code, see "Automating builds and tests."
+For building and publishing packages, see "Publishing packages."
+For deploying projects, see "Deployment."
+For automating tasks and processes on GitHub, see "Managing issues and pull requests."
+For examples that demonstrate more complex features of GitHub Actions, including many of the above use cases, see "Examples." You can see detailed examples that explain how to test your code on a runner, access the GitHub CLI, and use advanced features such as concurrency and test matrices.
+Contacting support
+If you need help with anything related to workflow configuration, such as syntax, GitHub-hosted runners, or building actions, look for an existing topic or start a new one in the GitHub Community's GitHub Actions and GitHub Packages category.
+If you have feedback or feature requests for GitHub Actions, share those in the GitHub Community discussions for GitHub Actions.
+Contact GitHub Support for any of the following, whether your use or intended use falls into the usage limit categories:
+If you believe your account has been incorrectly restricted
+If you encounter an unexpected error when executing one of your actions
+If you encounter a situation where existing behavior contradicts expected, but not always documented, behavior
+
+
+Finding and customizing actions
+In this article
+
+Overview
+
+
+Browsing Marketplace actions in the workflow editor
+
+
+Adding an action to your workflow
+
+
+Using release management for your custom actions
+
+
+Using inputs and outputs with an action
+
+
+Next steps
+
+
+
+Actions are the building blocks that power your workflow. A workflow can contain actions created by the community, or you can create your own actions directly within your application's repository. This guide will show you how to discover, use, and customize actions.
+Overview
+The actions you use in your workflow can be defined in:
+The same repository as your workflow file
+Any public repository
+A published Docker container image on Docker Hub
+GitHub Marketplace is a central location for you to find actions created by the GitHub community. GitHub Marketplace page enables you to filter for actions by category.
+Browsing Marketplace actions in the workflow editor
+You can search and browse actions directly in your repository's workflow editor. From the sidebar, you can search for a specific action, view featured actions, and browse featured categories. You can also view the number of stars an action has received from the GitHub community.
+In your repository, browse to the workflow file you want to edit.
+In the upper right corner of the file view, to open the workflow editor, click . 
+To the right of the editor, use the GitHub Marketplace sidebar to browse actions. Actions with the  badge indicate GitHub has verified the creator of the action as a partner organization. 
+
+Adding an action to your workflow
+You can add an action to your workflow by referencing the action in your workflow file.
+You can view the actions referenced in your GitHub Actions workflows as dependencies in the dependency graph of the repository containing your workflows. For more information, see “About the dependency graph.”
+Note: To enhance security, GitHub Actions is deprecating redirects for actions. This means that when the owner or name of an action's repository is changed, any workflows using that action with the previous name will fail.
+Adding an action from GitHub Marketplace
+An action's listing page includes the action's version and the workflow syntax required to use the action. To keep your workflow stable even when updates are made to an action, you can reference the version of the action to use by specifying the Git or Docker tag number in your workflow file.
+Navigate to the action you want to use in your workflow.
+Under "Installation", click  to copy the workflow syntax. 
+Paste the syntax as a new step in your workflow. For more information, see "Workflow syntax for GitHub Actions."
+If the action requires you to provide inputs, set them in your workflow. For information on inputs an action might require, see "Using inputs and outputs with an action."
+You can also enable Dependabot version updates for the actions that you add to your workflow. For more information, see "Keeping your actions up to date with Dependabot."
+Adding an action from the same repository
+If an action is defined in the same repository where your workflow file uses the action, you can reference the action with either the {owner}/{repo}@{ref} or ./path/to/dir syntax in your workflow file.
+Example repository file structure:
+|-- hello-world (repository)
+|   |__ .github
+|       └── workflows
+|           └── my-first-workflow.yml
+|       └── actions
+|           |__ hello-world-action
+|               └── action.yml
+Example workflow file:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # This step checks out a copy of your repository.
+      - uses: actions/checkout@v3
+      # This step references the directory that contains the action.
+      - uses: ./.github/actions/hello-world-action
+The action.yml file is used to provide metadata for the action. Learn about the content of this file in "Metadata syntax for GitHub Actions."
+Adding an action from a different repository
+If an action is defined in a different repository than your workflow file, you can reference the action with the {owner}/{repo}@{ref} syntax in your workflow file.
+The action must be stored in a public repository.
+jobs:
+  my_first_job:
+    steps:
+      - name: My first step
+        uses: actions/setup-node@v3
+Referencing a container on Docker Hub
+If an action is defined in a published Docker container image on Docker Hub, you must reference the action with the docker://{image}:{tag} syntax in your workflow file. To protect your code and data, we strongly recommend you verify the integrity of the Docker container image from Docker Hub before using it in your workflow.
+jobs:
+  my_first_job:
+    steps:
+      - name: My first step
+        uses: docker://alpine:3.8
+For some examples of Docker actions, see the Docker-image.yml workflow and "Creating a Docker container action."
+
+
+Using release management for your custom actions
+The creators of a community action have the option to use tags, branches, or SHA values to manage releases of the action. Similar to any dependency, you should indicate the version of the action you'd like to use based on your comfort with automatically accepting updates to the action.
+You will designate the version of the action in your workflow file. Check the action's documentation for information on their approach to release management, and to see which tag, branch, or SHA value to use.
+Note: We recommend that you use a SHA value when using third-party actions. For more information, see Security hardening for GitHub Actions
+Using tags
+Tags are useful for letting you decide when to switch between major and minor versions, but these are more ephemeral and can be moved or deleted by the maintainer. This example demonstrates how to target an action that's been tagged as v1.0.1:
+steps:
+  - uses: actions/javascript-action@v1.0.1
+Using SHAs
+If you need more reliable versioning, you should use the SHA value associated with the version of the action. SHAs are immutable and therefore more reliable than tags or branches. However this approach means you will not automatically receive updates for an action, including important bug fixes and security updates. You must use a commit's full SHA value, and not an abbreviated value. This example targets an action's SHA:
+steps:
+  - uses: actions/javascript-action@172239021f7ba04fe7327647b213799853a9eb89
+Using branches
+Specifying a target branch for the action means it will always run the version currently on that branch. This approach can create problems if an update to the branch includes breaking changes. This example targets a branch named @main:
+steps:
+  - uses: actions/javascript-action@main
+For more information, see "Using release management for actions."
+Using inputs and outputs with an action
+An action often accepts or requires inputs and generates outputs that you can use. For example, an action might require you to specify a path to a file, the name of a label, or other data it will use as part of the action processing.
+To see the inputs and outputs of an action, check the action.yml or action.yaml in the root directory of the repository.
+In this example action.yml, the inputs keyword defines a required input called file-path, and includes a default value that will be used if none is specified. The outputs keyword defines an output called results-file, which tells you where to locate the results.
+name: "Example"
+description: "Receives file and generates output"
+inputs:
+  file-path: # id of input
+    description: "Path to test script"
+    required: true
+    default: "test-file.js"
+outputs:
+  results-file: # id of output
+    description: "Path to results file"
+
+
+Essential features of GitHub Actions
+In this article
+Overview
+Using variables in your workflows
+Adding scripts to your workflow
+Sharing data between jobs
+Next steps
+GitHub Actions are designed to help you build robust and dynamic automations. This guide will show you how to craft GitHub Actions workflows that include environment variables, customized scripts, and more.
+Overview
+GitHub Actions allow you to customize your workflows to meet the unique needs of your application and team. In this guide, we'll discuss some of the essential customization techniques such as using variables, running scripts, and sharing data and artifacts between jobs.
+Using variables in your workflows
+GitHub Actions include default environment variables for each workflow run. If you need to use custom environment variables, you can set these in your YAML workflow file. This example demonstrates how to create custom variables named POSTGRES_HOST and POSTGRES_PORT. These variables are then available to the node client.js script.
+jobs:
+  example-job:
+      steps:
+        - name: Connect to PostgreSQL
+          run: node client.js
+          env:
+            POSTGRES_HOST: postgres
+            POSTGRES_PORT: 5432
+For more information, see "Variables."
+Adding scripts to your workflow
+You can use actions to run scripts and shell commands, which are then executed on the assigned runner. This example demonstrates how an action can use the run keyword to execute npm install -g bats on the runner.
+jobs:
+  example-job:
+    steps:
+      - run: npm install -g bats
+For example, to run a script as an action, you can store the script in your repository and supply the path and shell type.
+jobs:
+  example-job:
+    steps:
+      - name: Run build script
+        run: ./.github/scripts/build.sh
+        shell: bash
+For more information, see "Workflow syntax for GitHub Actions."
+Sharing data between jobs
+If your job generates files that you want to share with another job in the same workflow, or if you want to save the files for later reference, you can store them in GitHub as artifacts. Artifacts are the files created when you build and test your code. For example, artifacts might include binary or package files, test results, screenshots, or log files. Artifacts are associated with the workflow run where they were created and can be used by another job. All actions and workflows called within a run have write access to that run's artifacts.
+For example, you can create a file and then upload it as an artifact.
+jobs:
+  example-job:
+    name: Save output
+    steps:
+      - shell: bash
+        run: |
+          expr 1 + 1 > output.log
+      - name: Upload output file
+        uses: actions/upload-artifact@v3
+        with:
+          name: output-log-file
+          path: output.log
+To download an artifact from a separate workflow run, you can use the actions/download-artifact action. For example, you can download the artifact named output-log-file.
+jobs:
+  example-job:
+    steps:
+      - name: Download a single artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: output-log-file
+To download an artifact from the same workflow run, your download job should specify needs: upload-job-name so it doesn't start until the upload job finishes.
+For more information about artifacts, see "Persisting workflow data using artifacts."
+Next steps
+About workflows
+In this article
+About workflows
+Workflow basics
+Triggering a workflow
+Workflow syntax
+Create an example workflow
+Understanding the workflow file
+Visualizing the workflow file
+Viewing the activity for a workflow run
+Using starter workflows
+Advanced workflow features
+Storing secrets
+Creating dependent jobs
+Using a matrix
+Caching dependencies
+Using databases and service containers
+Using labels to route workflows
+Reusing workflows
+Using environments
+
+Get a high-level overview of GitHub Actions workflows, including triggers, syntax, and advanced features.
+About workflows
+A workflow is a configurable automated process that will run one or more jobs. Workflows are defined by a YAML file checked in to your repository and will run when triggered by an event in your repository, or they can be triggered manually, or at a defined schedule.
+Workflows are defined in the .github/workflows directory in a repository, and a repository can have multiple workflows, each of which can perform a different set of tasks. For example, you can have one workflow to build and test pull requests, another workflow to deploy your application every time a release is created, and still another workflow that adds a label every time someone opens a new issue.
+Workflow basics
+A workflow must contain the following basic components:
+One or more events that will trigger the workflow.
+One or more jobs, each of which will execute on a runner machine and run a series of one or more steps.
+Each step can either run a script that you define or run an action, which is a reusable extension that can simplify your workflow.
+For more information on these basic components, see "Understanding GitHub Actions."
+ 
+Triggering a workflow
+Workflow triggers are events that cause a workflow to run. These events can be:
+Events that occur in your workflow's repository
+Events that occur outside of GitHub and trigger a repository_dispatch event on GitHub
+Scheduled times
+Manual
+For example, you can configure your workflow to run when a push is made to the default branch of your repository, when a release is created, or when an issue is opened.
+For more information, see "Triggering a workflow", and for a full list of events, see "Events that trigger workflows."
+Workflow syntax
+Workflow are defined using YAML. For the full reference of the YAML syntax for authoring workflows, see "Workflow syntax for GitHub Actions."
+
+Create an example workflow
+GitHub Actions uses YAML syntax to define the workflow. Each workflow is stored as a separate YAML file in your code repository, in a directory named .github/workflows.
+You can create an example workflow in your repository that automatically triggers a series of commands whenever code is pushed. In this workflow, GitHub Actions checks out the pushed code, installs the bats testing framework, and runs a basic command to output the bats version: bats -v.
+In your repository, create the .github/workflows/ directory to store your workflow files.
+In the .github/workflows/ directory, create a new file called learn-github-actions.yml and add the following code.
+YAML
+name: learn-github-actions
+run-name: ${{ github.actor }} is learning GitHub Actions
+on: [push]
+jobs:
+  check-bats-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+      - run: npm install -g bats
+      - run: bats -v
+Commit these changes and push them to your GitHub repository.
+Your new GitHub Actions workflow file is now installed in your repository and will run automatically each time someone pushes a change to the repository. To see the details about a workflow's execution history, see "Viewing the activity for a workflow run."
+Understanding the workflow file
+To help you understand how YAML syntax is used to create a workflow file, this section explains each line of the introduction's example:
+name: learn-github-actions
+	Optional - The name of the workflow as it will appear in the "Actions" tab of the GitHub repository.
+run-name: ${{ github.actor }} is learning GitHub Actions
+	Optional - The name for workflow runs generated from the workflow, which will appear in the list of workflow runs on your repository's "Actions" tab. This example uses an expression with the github context to display the username of the actor that triggered the workflow run. For more information, see "Workflow syntax for GitHub Actions."
+
+on: [push]
+	Specifies the trigger for this workflow. This example uses the push event, so a workflow run is triggered every time someone pushes a change to the repository or merges a pull request. This is triggered by a push to every branch; for examples of syntax that runs only on pushes to specific branches, paths, or tags, see "Workflow syntax for GitHub Actions."
+
+jobs:
+	Groups together all the jobs that run in the learn-github-actions workflow.
+check-bats-version:
+	Defines a job named check-bats-version. The child keys will define properties of the job.
+  runs-on: ubuntu-latest
+	Configures the job to run on the latest version of an Ubuntu Linux runner. This means that the job will execute on a fresh virtual machine hosted by GitHub. For syntax examples using other runners, see "Workflow syntax for GitHub Actions."
+
+  steps:
+	Groups together all the steps that run in the check-bats-version job. Each item nested under this section is a separate action or shell script.
+    - uses: actions/checkout@v3
+	The uses keyword specifies that this step will run v3 of the actions/checkout action. This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools). You should use the checkout action any time your workflow will run against the repository's code.
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+	This step uses the actions/setup-node@v3 action to install the specified version of the Node.js (this example uses v14). This puts both the node and npm commands in your PATH.
+    - run: npm install -g bats
+	The run keyword tells the job to execute a command on the runner. In this case, you are using npm to install the bats software testing package.
+    - run: bats -v
+	Finally, you'll run the bats command with a parameter that outputs the software version.
+Visualizing the workflow file
+In this diagram, you can see the workflow file you just created and how the GitHub Actions components are organized in a hierarchy. Each step executes a single action or shell script. Steps 1 and 2 run actions, while steps 3 and 4 run shell scripts. To find more prebuilt actions for your workflows, see "Finding and customizing actions."
+ 
+Viewing the activity for a workflow run
+When your workflow is triggered, a workflow run is created that executes the workflow. After a workflow run has started, you can see a visualization graph of the run's progress and view each step's activity on GitHub.
+On GitHub.com, navigate to the main page of the repository.
+Under your repository name, click Actions.
+ 
+In the left sidebar, click the workflow you want to see.
+ 
+Under "Workflow runs", click the name of the run you want to see.
+ 
+Under Jobs or in the visualization graph, click the job you want to see.
+ 
+View the results of each step.
+ 
+For more on managing workflow runs, such as re-running, cancelling, or deleting a workflow run, see "Managing workflow runs."
+Using starter workflows
+GitHub provides preconfigured starter workflows that you can customize to create your own continuous integration workflow. GitHub analyzes your code and shows you CI starter workflows that might be useful for your repository. For example, if your repository contains Node.js code, you'll see suggestions for Node.js projects. You can use starter workflows as a starting place to build your custom workflow or use them as-is.
+You can browse the full list of starter workflows in the actions/starter-workflows repository.
+For more information on using and creating starter workflows, see "Using starter workflows" and "Creating starter workflows for your organization."
+
+Advanced workflow features
+This section briefly describes some of the advanced features of GitHub Actions that help you create more complex workflows.
+Storing secrets
+If your workflows use sensitive data, such as passwords or certificates, you can save these in GitHub as secrets and then use them in your workflows as environment variables. This means that you will be able to create and share workflows without having to embed sensitive values directly in the workflow's YAML source.
+This example job demonstrates how to reference an existing secret as an environment variable, and send it as a parameter to an example command.
+jobs:
+  example-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve secret
+        env:
+          super_secret: ${{ secrets.SUPERSECRET }}
+        run: |
+          example-command "$super_secret"
+For more information, see "Encrypted secrets."
+Creating dependent jobs
+By default, the jobs in your workflow all run in parallel at the same time. If you have a job that must only run after another job has completed, you can use the needs keyword to create this dependency. If one of the jobs fails, all dependent jobs are skipped; however, if you need the jobs to continue, you can define this using the if conditional statement.
+In this example, the setup, build, and test jobs run in series, with build and test being dependent on the successful completion of the job that precedes them:
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./setup_server.sh
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./build_server.sh
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./test_server.sh
+For more information, see "Defining prerequisite jobs."
+Using a matrix
+A matrix strategy lets you use variables in a single job definition to automatically create multiple job runs that are based on the combinations of the variables. For example, you can use a matrix strategy to test your code in multiple versions of a language or on multiple operating systems. The matrix is created using the strategy keyword, which receives the build options as an array. For example, this matrix will run the job multiple times, using different versions of Node.js:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [12, 14, 16]
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+For more information, see "Using a matrix for your jobs."
+Caching dependencies
+If your jobs regularly reuse dependencies, you can consider caching these files to help improve performance. Once the cache is created, it is available to all workflows in the same repository.
+This example demonstrates how to cache the ~/.npm directory:
+jobs:
+  example-job:
+    steps:
+      - name: Cache node modules
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+For more information, see "Caching dependencies to speed up workflows."
+Using databases and service containers
+If your job requires a database or cache service, you can use the services keyword to create an ephemeral container to host the service; the resulting container is then available to all steps in that job and is removed when the job has completed. This example demonstrates how a job can use services to create a postgres container, and then use node to connect to the service.
+jobs:
+  container-job:
+    runs-on: ubuntu-latest
+    container: node:10.18-jessie
+    services:
+      postgres:
+        image: postgres
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: npm ci
+      - name: Connect to PostgreSQL
+        run: node client.js
+        env:
+          POSTGRES_HOST: postgres
+          POSTGRES_PORT: 5432
+For more information, see "Using containerized services."
+Using labels to route workflows
+If you want to be sure that a particular type of runner will process your job, you can use labels to control where jobs are executed. You can assign labels to a self-hosted runner in addition to their default label of self-hosted. Then, you can refer to these labels in your YAML workflow, ensuring that the job is routed in a predictable way. GitHub-hosted runners have predefined labels assigned.
+This example shows how a workflow can use labels to specify the required runner:
+jobs:
+  example-job:
+    runs-on: [self-hosted, linux, x64, gpu]
+A workflow will only run on a runner that has all the labels in the runs-on array. The job will preferentially go to an idle self-hosted runner with the specified labels. If none are available and a GitHub-hosted runner with the specified labels exists, the job will go to a GitHub-hosted runner.
+To learn more about self-hosted runner labels, see "Using labels with self-hosted runners."
+To learn more about GitHub-hosted runner labels, see "Supported runners and hardware resources."
+Reusing workflows
+You can call one workflow from within another workflow. This allows you to reuse workflows, avoiding duplication and making your workflows easier to maintain. For more information, see "Reusing workflows."
+Using environments
+You can configure environments with protection rules and secrets to control the execution of jobs in a workflow. Each job in a workflow can reference a single environment. Any protection rules configured for the environment must pass before a job referencing the environment is sent to a runner. For more information, see "Using environments for deployment."
+
+Using scripts to test your code on a runner
+In this article
+Example overview
+Features used in this example
+Example workflow
+Understanding the example
+Next steps
+
+
+
+
+
+
+
+
+
+
+
+
+How to use essential GitHub Actions features for continuous integration (CI).
+Example overview
+This article uses an example workflow to demonstrate some of the main CI features of GitHub Actions. When this workflow is triggered, it automatically runs a script that checks whether the GitHub Docs site has any broken links.
+The following diagram shows a high level view of the workflow's steps and how they run within the job:
+ 
+Features used in this example
+The example workflow demonstrates the following capabilities of GitHub Actions:
+Feature	Implementation
+Triggering a workflow to run automatically:	push
+
+Triggering a workflow to run automatically:	pull_request
+
+Manually running a workflow from the UI:	workflow_dispatch
+
+Setting permissions for the token:	permissions
+
+Controlling how many workflow runs or jobs can run at the same time:	concurrency
+
+Running the job on different runners, depending on the repository:	runs-on
+
+Cloning your repository to the runner:	actions/checkout
+
+Installing node on the runner:	actions/setup-node
+
+Using a third-party action:	trilom/file-changes-action
+
+Running a script on the runner:	Using ./script/rendered-content-link-checker.mjs
+
+
+Example workflow
+The following workflow was created by the GitHub Docs Engineering team. To review the latest version of this file in the github/docs repository, see check-broken-links-github-github.yml.
+Note: Each line of this workflow is explained in the next section at "Understanding the example."
+
+YAML
+name: 'Link Checker: All English'
+
+# **What it does**: Renders the content of every page and check all internal links.
+# **Why we have it**: To make sure all links connect correctly.
+# **Who does it impact**: Docs content.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  # Needed for the 'trilom/file-changes-action' action
+  pull-requests: read
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  check-links:
+    runs-on: ${{ fromJSON('["ubuntu-latest", "self-hosted"]')[github.repository == 'github/docs-internal'] }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.13.x
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Creates file "$/files.json", among others
+      - name: Gather files changed
+        uses: trilom/file-changes-action@a6ca26c14274c33b15e6499323aac178af06ad4b
+        with:
+          fileOutput: 'json'
+
+      # For verification
+      - name: Show files changed
+        run: cat $HOME/files.json
+
+      - name: Link check (warnings, changed files)
+        run: |
+          ./script/rendered-content-link-checker.mjs \
+            --language en \
+            --max 100 \
+            --check-anchors \
+            --check-images \
+            --verbose \
+            --list $HOME/files.json
+
+      - name: Link check (critical, all files)
+        run: |
+          ./script/rendered-content-link-checker.mjs \
+            --language en \
+            --exit \
+            --verbose \
+            --check-images \
+            --level critical
+Understanding the example
+The following table explains how each of these features are used when creating a GitHub Actions workflow.
+Code	Explanation
+YAML
+name: 'Link Checker: All English'	The name of the workflow as it will appear in the "Actions" tab of the GitHub repository.
+YAML
+on:	The on keyword lets you define the events that trigger when the workflow is run. You can define multiple events here. For more information, see "Triggering a workflow."
+
+YAML
+  workflow_dispatch:	Add the workflow_dispatch event if you want to be able to manually run this workflow from the UI. For more information, see workflow_dispatch.
+
+YAML
+  push:
+    branches:
+      - main	Add the push event, so that the workflow runs automatically every time a commit is pushed to a branch called main. For more information, see push.
+
+YAML
+  pull_request:	Add the pull_request event, so that the workflow runs automatically every time a pull request is created or updated. For more information, see pull_request.
+
+YAML
+permissions:
+  contents: read
+  pull-requests: read	Modifies the default permissions granted to GITHUB_TOKEN. This will vary depending on the needs of your workflow. For more information, see "Assigning permissions to jobs."
+
+YAML
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'	Creates a concurrency group for specific events, and uses the || operator to define fallback values. For more information, see "Using concurrency."
+
+YAML
+  cancel-in-progress: true	Cancels any currently running job or workflow in the same concurrency group.
+YAML
+jobs:	Groups together all the jobs that run in the workflow file.
+YAML
+  check-links:	Defines a job with the ID check-links that is stored within the jobs key.
+YAML
+    runs-on: ${{ fromJSON('["ubuntu-latest", "self-hosted"]')[github.repository == 'github/docs-internal'] }}	Configures the job to run on a GitHub-hosted runner or a self-hosted runner, depending on the repository running the workflow. In this example, the job will run on a self-hosted runner if the repository is named docs-internal and is within the github organization. If the repository doesn't match this path, then it will run on an ubuntu-latest runner hosted by GitHub. For more information on these options see "Choosing the runner for a job."
+
+YAML
+    steps:	Groups together all the steps that will run as part of the check-links job. Each job in a workflow has its own steps section.
+YAML
+      - name: Checkout
+        uses: actions/checkout@v3	The uses keyword tells the job to retrieve the action named actions/checkout. This is an action that checks out your repository and downloads it to the runner, allowing you to run actions against your code (such as testing tools). You must use the checkout action any time your workflow will run against the repository's code or you are using an action defined in the repository.
+YAML
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.13.x
+          cache: npm	This step uses the actions/setup-node action to install the specified version of the Node.js software package on the runner, which gives you access to the npm command.
+YAML
+      - name: Install
+        run: npm ci	The run keyword tells the job to execute a command on the runner. In this case, npm ci is used to install the npm software packages for the project.
+YAML
+      - name: Gather files changed
+        uses: trilom/file-changes-action@a6ca26c14274c33b15e6499323aac178af06ad4b
+        with:
+          fileOutput: 'json'	Uses the trilom/file-changes-action action to gather all the changed files. This example is pinned to a specific version of the action, using the a6ca26c14274c33b15e6499323aac178af06ad4b SHA.
+YAML
+      - name: Show files changed
+        run: cat $HOME/files.json	Lists the contents of files.json. This will be visible in the workflow run's log, and can be useful for debugging.
+YAML
+      - name: Link check (warnings, changed files)
+        run: |
+          ./script/rendered-content-link-checker.mjs \
+            --language en \
+            --max 100 \
+            --check-anchors \
+            --check-images \
+            --verbose \
+            --list $HOME/files.json	This step uses run command to execute a script that is stored in the repository at script/rendered-content-link-checker.mjs and passes all the parameters it needs to run.
+YAML
+      - name: Link check (critical, all files)
+        run: |
+          ./script/rendered-content-link-checker.mjs \
+            --language en \
+            --exit \
+            --verbose \
+            --check-images \
+            --level critical	This step also uses run command to execute a script that is stored in the repository at script/rendered-content-link-checker.mjs and passes a different set of parameters.
+Next steps
+To learn about GitHub Actions concepts, see "Understanding GitHub Actions."
+For more step-by-step guide for creating a basic workflow, see "Quickstart for GitHub Actions."
+If you're comfortable with the basics of GitHub Actions, you can learn about workflows and their features at "About workflows."
+
+
+
+Using the GitHub CLI on a runner
+In this article
+Example overview
+Features used in this example
+Example workflow
+Understanding the example
+Next steps
+
+
+
+
+
+
+
+How to use advanced GitHub Actions features for continuous integration (CI).
+Example overview
+This article uses an example workflow to demonstrate some of the main CI features of GitHub Actions. When this workflow is triggered, it automatically runs a script that checks whether the GitHub Docs site has any broken links. If any broken links are found, the workflow uses the GitHub CLI to create a GitHub issue with the details.
+The following diagram shows a high level view of the workflow's steps and how they run within the job:
+ 
+Features used in this example
+The example workflow demonstrates the following capabilities of GitHub Actions:
+Feature	Implementation
+Running a workflow at regular intervals:	schedule
+
+Setting permissions for the token:	permissions
+
+Preventing a job from running unless specific conditions are met:	if
+
+Referencing secrets in a workflow:	Secrets
+
+Cloning your repository to the runner:	actions/checkout
+
+Installing node on the runner:	actions/setup-node
+
+Using a third-party action:	peter-evans/create-issue-from-file
+
+Running shell commands on the runner:	run
+
+Running a script on the runner:	Using script/check-english-links.js
+Generating an output file:	Piping the output using the > operator
+Checking for existing issues using GitHub CLI:	gh issue list
+
+Commenting on an issue using GitHub CLI:	gh issue comment
+
+Example workflow
+The following workflow was created by the GitHub Docs Engineering team. To review the latest version of this file in the github/docs repository, see check-all-english-links.yml.
+Note: Each line of this workflow is explained in the next section at "Understanding the example."
+
+YAML
+name: Check all English links
+
+# **What it does**: This script once a day checks all English links and reports in issues.
+# **Why we have it**: We want to know if any links break.
+# **Who does it impact**: Docs content.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '40 19 * * *' # once a day at 19:40 UTC / 11:40 PST
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check_all_english_links:
+    name: Check all links
+    if: github.repository == 'github/docs-internal'
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.DOCUBOT_READORG_REPO_WORKFLOW_SCOPES }}
+      FIRST_RESPONDER_PROJECT: Docs content first responder
+      REPORT_AUTHOR: docubot
+      REPORT_LABEL: broken link report
+      REPORT_REPOSITORY: github/docs-content
+    steps:
+      - name: Check out repo's default branch
+        uses: actions/checkout@v3
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.13.x
+          cache: npm
+      - name: npm ci
+        run: npm ci
+      - name: npm run build
+        run: npm run build
+      - name: Run script
+        run: |
+          script/check-english-links.js > broken_links.md
+
+      # check-english-links.js returns 0 if no links are broken, and 1 if any links
+      # are broken. When an Actions step's exit code is 1, the action run's job status
+      # is failure and the run ends. The following steps create an issue for the
+      # broken link report only if any links are broken, so `if: ${{ failure() }}`
+      # ensures the steps run despite the previous step's failure of the job.
+
+      - if: ${{ failure() }}
+        name: Get title for issue
+        id: check
+        run: echo "title=$(head -1 broken_links.md)" >> $GITHUB_OUTPUT
+      - if: ${{ failure() }}
+        name: Create issue from file
+        id: broken-link-report
+        uses: peter-evans/create-issue-from-file@b4f9ee0a9d4abbfc6986601d9b1a4f8f8e74c77e
+        with:
+          token: ${{ env.GITHUB_TOKEN }}
+
+          title: ${{ steps.check.outputs.title }}
+          content-filepath: ./broken_links.md
+          repository: ${{ env.REPORT_REPOSITORY }}
+          labels: ${{ env.REPORT_LABEL }}
+      - if: ${{ failure() }}
+        name: Close and/or comment on old issues
+        env:
+          NEW_REPORT_URL: 'https://github.com/${{ env.REPORT_REPOSITORY }}/issues/${{ steps.broken-link-report.outputs.issue-number }}'
+        run: |
+          gh alias set list-reports "issue list \
+                                       --repo ${{ env.REPORT_REPOSITORY }} \
+                                       --author ${{ env.REPORT_AUTHOR }} \
+                                       --label '${{ env.REPORT_LABEL }}'"
+
+          # Link to the previous report from the new report that triggered this
+          # workflow run.
+
+          previous_report_url=$(gh list-reports \
+                                  --state all \
+                                  --limit 2 \
+                                  --json url \
+                                  --jq '.[].url' \
+                                  | grep -v ${{ env.NEW_REPORT_URL }} | head -1)
+
+          gh issue comment ${{ env.NEW_REPORT_URL }} --body "⬅️ [Previous report]($previous_report_url)"
+
+          # If an old report is open and assigned to someone, link to the newer
+          # report without closing the old report.
+
+          for issue_url in $(gh list-reports \
+                                  --json assignees,url \
+                                  --jq '.[] | select (.assignees != []) | .url'); do
+            if [ "$issue_url" != "${{ env.NEW_REPORT_URL }}" ]; then
+              gh issue comment $issue_url --body "➡️ [Newer report](${{ env.NEW_REPORT_URL }})"
+            fi
+          done
+
+          # Link to the newer report from any older report that is still open,
+          # then close the older report and remove it from the first responder's
+          # project board.
+
+          for issue_url in $(gh list-reports \
+                                  --search 'no:assignee' \
+                                  --json url \
+                                  --jq '.[].url'); do
+            if [ "$issue_url" != "${{ env.NEW_REPORT_URL }}" ]; then
+              gh issue comment $issue_url --body "➡️ [Newer report](${{ env.NEW_REPORT_URL }})"
+              gh issue close $issue_url
+              gh issue edit $issue_url --remove-project "${{ env.FIRST_RESPONDER_PROJECT }}"
+            fi
+          done
+Understanding the example
+The following table explains how each of these features are used when creating a GitHub Actions workflow.
+Code	Explanation
+YAML
+name: Check all English links	The name of the workflow as it will appear in the "Actions" tab of the GitHub repository.
+YAML
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '40 20 * * *' # once a day at 20:40 UTC / 12:40 PST	Defines the workflow_dispatch and scheduled as triggers for the workflow:
+The workflow_dispatch lets you manually run this workflow from the UI. For more information, see workflow_dispatch.
+The schedule event lets you use cron syntax to define a regular interval for automatically triggering the workflow. For more information, see schedule.
+
+YAML
+permissions:
+  contents: read
+  issues: write	Modifies the default permissions granted to GITHUB_TOKEN. This will vary depending on the needs of your workflow. For more information, see "Assigning permissions to jobs."
+
+YAML
+jobs:	Groups together all the jobs that run in the workflow file.
+YAML
+  check_all_english_links:
+    name: Check all links	Defines a job with the ID check_all_english_links, and the name Check all links, that is stored within the jobs key.
+YAML
+if: github.repository == 'github/docs-internal'	Only run the check_all_english_links job if the repository is named docs-internal and is within the github organization. Otherwise, the job is marked as skipped.
+YAML
+runs-on: ubuntu-latest	Configures the job to run on an Ubuntu Linux runner. This means that the job will execute on a fresh virtual machine hosted by GitHub. For syntax examples using other runners, see "Workflow syntax for GitHub Actions."
+
+YAML
+    env:
+      GITHUB_TOKEN: ${{ secrets.DOCUBOT_READORG_REPO_WORKFLOW_SCOPES }}
+      REPORT_AUTHOR: docubot
+      REPORT_LABEL: broken link report
+      REPORT_REPOSITORY: github/docs-content	Creates custom environment variables, and redefines the built-in GITHUB_TOKEN variable to use a custom secret. These variables will be referenced later in the workflow.
+YAML
+    steps:	Groups together all the steps that will run as part of the check_all_english_links job. Each job in the workflow has its own steps section.
+YAML
+      - name: Check out repo's default branch
+        uses: actions/checkout@v3	The uses keyword tells the job to retrieve the action named actions/checkout. This is an action that checks out your repository and downloads it to the runner, allowing you to run actions against your code (such as testing tools). You must use the checkout action any time your workflow will run against the repository's code or you are using an action defined in the repository.
+YAML
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.8.x
+          cache: npm	This step uses the actions/setup-node action to install the specified version of the node software package on the runner, which gives you access to the npm command.
+YAML
+      - name: Run the "npm ci" command
+        run: npm ci
+      - name: Run the "npm run build" command
+        run: npm run build	The run keyword tells the job to execute a command on the runner. In this case, the npm ci and npm run build commands are run as separate steps to install and build the Node.js application in the repository.
+YAML
+      - name: Run script
+        run: |
+          script/check-english-links.js > broken_links.md	This run command executes a script that is stored in the repository at script/check-english-links.js, and pipes the output to a file called broken_links.md.
+YAML
+      - if: ${{ failure() }}
+        name: Get title for issue
+        id: check
+        run: echo "title=$(head -1 broken_links.md)" >> $GITHUB_OUTPUT	If the check-english-links.js script detects broken links and returns a non-zero (failure) exit status, then use a workflow command to set an output that has the value of the first line of the broken_links.md file (this is used the next step).
+YAML
+      - if: ${{ failure() }}
+        name: Create issue from file
+        id: broken-link-report
+        uses: peter-evans/create-issue-from-file@b4f9ee0a9d4abbfc6986601d9b1a4f8f8e74c77e
+        with:
+          token: ${{ env.GITHUB_TOKEN }}
+
+          title: ${{ steps.check.outputs.title }}
+          content-filepath: ./broken_links.md
+          repository: ${{ env.REPORT_REPOSITORY }}
+          labels: ${{ env.REPORT_LABEL }}	Uses the peter-evans/create-issue-from-file action to create a new GitHub issue. This example is pinned to a specific version of the action, using the b4f9ee0a9d4abbfc6986601d9b1a4f8f8e74c77e SHA.
+YAML
+      - if: ${{ failure() }}
+        name: Close and/or comment on old issues
+        env:
+          NEW_REPORT_URL: 'https://github.com/${{ env.REPORT_REPOSITORY }}/issues/${{ steps.broken-link-report.outputs.issue-number }}'
+        run: |
+          gh alias set list-reports "issue list \
+                                       --repo ${{ env.REPORT_REPOSITORY }} \
+                                       --author ${{ env.REPORT_AUTHOR }} \
+                                       --label '${{ env.REPORT_LABEL }}'"
+          previous_report_url=$(gh list-reports \
+                                  --state all \
+                                  --limit 2 \
+                                  --json url \
+                                  --jq '.[].url' \
+                                  | grep -v ${{ env.NEW_REPORT_URL }} | head -1)
+
+          gh issue comment ${{ env.NEW_REPORT_URL }} --body "⬅️ [Previous report]($previous_report_url)"	Uses gh issue list to locate the previously created issue from earlier runs. This is aliased to gh list-reports for simpler processing in later steps. To get the issue URL, the jq expression processes the resulting JSON output.
+gh issue comment is then used to add a comment to the new issue that links to the previous one.
+YAML
+          for issue_url in $(gh list-reports \
+                                  --json assignees,url \
+                                  --jq '.[] | select (.assignees != []) | .url'); do
+            if [ "$issue_url" != "$" ]; then
+              gh issue comment $issue_url --body "➡️ [Newer report]($)"
+            fi
+          done	If an issue from a previous run is open and assigned to someone, then use gh issue comment to add a comment with a link to the new issue.
+
+YAML
+          for issue_url in $(gh list-reports \
+                                  --search 'no:assignee' \
+                                  --json url \
+                                  --jq '.[].url'); do
+            if [ "$issue_url" != "${{ env.NEW_REPORT_URL }}" ]; then
+              gh issue comment $issue_url --body "➡️ [Newer report](${{ env.NEW_REPORT_URL }})"
+              gh issue close $issue_url
+              gh issue edit $issue_url --remove-project "${{ env.FIRST_RESPONDER_PROJECT }}"
+            fi
+          done	If an issue from a previous run is open and is not assigned to anyone, then:
+Use gh issue comment to add a comment with a link to the new issue.
+Use gh issue close to close the old issue.
+Use gh issue edit to edit the old issue to remove it from a specific GitHub project board.
+Next steps
+To learn about GitHub Actions concepts, see "Understanding GitHub Actions."
+For more step-by-step guide for creating a basic workflow, see "Quickstart for GitHub Actions."
+If you're comfortable with the basics of GitHub Actions, you can learn about workflows and their features at "About workflows."
+
+Using concurrency, expressions, and a test matrix
+In this article
+Example overview
+Features used in this example
+Example workflow
+Understanding the example
+Next steps
+
+
+How to use advanced GitHub Actions features for continuous integration (CI).
+Example overview
+This article uses an example workflow to demonstrate some of the main CI features of GitHub Actions. When this workflow is triggered, it tests your code using a matrix of test combinations with npm test.
+The following diagram shows a high level view of the workflow's steps and how they run within the job:
+ 
+Features used in this example
+The example workflow demonstrates the following capabilities of GitHub Actions:
+Feature	Implementation
+Manually running a workflow from the UI:	workflow_dispatch
+
+Triggering a workflow to run automatically:	pull_request
+
+Running a workflow at regular intervals:	schedule
+
+Setting permissions for the token:	permissions
+
+Controlling how many workflow runs or jobs can run at the same time:	concurrency
+
+Running the job on different runners, depending on the repository:	runs-on
+
+Preventing a job from running unless specific conditions are met:	if
+
+Using a matrix to create different test configurations:	matrix
+
+Cloning your repository to the runner:	actions/checkout
+
+Installing node on the runner:	actions/setup-node
+
+Caching dependencies:	actions/cache
+
+Running tests on the runner:	npm test
+Example workflow
+The following workflow was created by the GitHub Docs Engineering team. To review the latest version of this file in the github/docs repository, see test.yml.
+Note: Each line of this workflow is explained in the next section at "Understanding the example."
+
+YAML
+name: Node.js Tests
+
+# **What it does**: Runs our tests.
+# **Why we have it**: We want our tests to pass before merging code.
+# **Who does it impact**: Docs engineering, open-source engineering contributors.
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  # Needed for the 'trilom/file-changes-action' action
+  pull-requests: read
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Run on self-hosted if the private repo or ubuntu-latest if the public repo
+    # See pull # 17442 in the private repo for context
+    runs-on: ${{ fromJSON('["ubuntu-latest", "self-hosted"]')[github.repository == 'github/docs-internal'] }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # The same array lives in test-windows.yml, so make any updates there too.
+        test-group:
+          [
+            content,
+            graphql,
+            meta,
+            rendering,
+            routing,
+            unit,
+            linting,
+            translations,
+          ]
+    steps:
+      # Each of these ifs needs to be repeated at each step to make sure the required check still runs
+      # Even if if doesn't do anything
+      - name: Check out repo
+        uses: actions/checkout@v3
+        with:
+          # Not all test suites need the LFS files. So instead, we opt to
+          # NOT clone them initially and instead, include them manually
+          # only for the test groups that we know need the files.
+          lfs: ${{ matrix.test-group == 'content' }}
+          # Enables cloning the Early Access repo later with the relevant personal access token
+          persist-credentials: 'false'
+
+      - name: Figure out which docs-early-access branch to checkout, if internal repo
+        if: ${{ github.repository == 'github/docs-internal' }}
+        id: check-early-access
+        uses: actions/github-script@v6
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        with:
+          github-token: ${{ secrets.DOCUBOT_REPO_PAT }}
+          result-encoding: string
+          script: |
+            // If being run from a PR, this becomes 'my-cool-branch'.
+            // If run on main, with the `workflow_dispatch` action for
+            // example, the value becomes 'main'.
+            const { BRANCH_NAME } = process.env
+            try {
+              const response = await github.repos.getBranch({
+                owner: 'github',
+                repo: 'docs-early-access',
+                BRANCH_NAME,
+              })
+              console.log(`Using docs-early-access branch called '${BRANCH_NAME}'.`)
+              return BRANCH_NAME
+            } catch (err) {
+              if (err.status === 404) {
+                console.log(`There is no docs-early-access branch called '${BRANCH_NAME}' so checking out 'main' instead.`)
+                return 'main'
+              }
+              throw err
+            }
+
+      - name: Check out docs-early-access too, if internal repo
+        if: ${{ github.repository == 'github/docs-internal' }}
+        uses: actions/checkout@v3
+        with:
+          repository: github/docs-early-access
+          token: ${{ secrets.DOCUBOT_REPO_PAT }}
+          path: docs-early-access
+          ref: ${{ steps.check-early-access.outputs.result }}
+
+      - name: Merge docs-early-access repo's folders
+        if: ${{ github.repository == 'github/docs-internal' }}
+        run: |
+          mv docs-early-access/assets assets/images/early-access
+          mv docs-early-access/content content/early-access
+          mv docs-early-access/data data/early-access
+          rm -r docs-early-access
+
+      # This is necessary when LFS files where cloned but does nothing
+      # if actions/checkout was run with `lfs:false`.
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
+      - name: Gather files changed
+        uses: trilom/file-changes-action@a6ca26c14274c33b15e6499323aac178af06ad4b
+        id: get_diff_files
+        with:
+          # So that `steps.get_diff_files.outputs.files` becomes
+          # a string like `foo.js path/bar.md`
+          output: ' '
+
+      - name: Insight into changed files
+        run: |
+
+          # Must to do this because the list of files can be HUGE. Especially
+          # in a repo-sync when there are lots of translation files involved.
+          echo "${{ steps.get_diff_files.outputs.files }}" > get_diff_files.txt
+
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.14.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache nextjs build
+        uses: actions/cache@v3
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package*.json') }}
+
+      - name: Run build script
+        run: npm run build
+
+      - name: Run tests
+        env:
+          DIFF_FILE: get_diff_files.txt
+          CHANGELOG_CACHE_FILE_PATH: tests/fixtures/changelog-feed.json
+        run: npm test -- tests/${{ matrix.test-group }}/
+Understanding the example
+ The following table explains how each of these features are used when creating a GitHub Actions workflow.
+Code	Explanation
+YAML
+name: Node.js Tests	The name of the workflow as it will appear in the "Actions" tab of the GitHub repository.
+YAML
+on:	The on keyword lets you define the events that trigger when the workflow is run. You can define multiple events here. For more information, see "Triggering a workflow."
+
+YAML
+  workflow_dispatch:	Add the workflow_dispatch event if you want to be able to manually run this workflow in the UI. For more information, see workflow_dispatch.
+
+YAML
+  pull_request:	Add the pull_request event, so that the workflow runs automatically every time a pull request is created or updated. For more information, see pull_request.
+
+YAML
+  push:
+    branches:
+      - main	Add the push event, so that the workflow runs automatically every time a commit is pushed to a branch matching the filter main. For more information, see push.
+
+YAML
+permissions:
+  contents: read
+  pull-requests: read	Modifies the default permissions granted to GITHUB_TOKEN. This will vary depending on the needs of your workflow. For more information, see "Assigning permissions to jobs."
+
+YAML
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'	Creates a concurrency group for specific events, and uses the || operator to define fallback values. For more information, see "Using concurrency."
+
+YAML
+  cancel-in-progress: true	Cancels any currently running job or workflow in the same concurrency group.
+YAML
+jobs:	Groups together all the jobs that run in the workflow file.
+YAML
+  test:	Defines a job with the ID test that is stored within the jobs key.
+YAML
+    runs-on: ${{ fromJSON('["ubuntu-latest", "self-hosted"]')[github.repository == 'github/docs-internal'] }}	Configures the job to run on a GitHub-hosted runner or a self-hosted runner, depending on the repository running the workflow. In this example, the job will run on a self-hosted runner if the repository is named docs-internal and is within the github organization. If the repository doesn't match this path, then it will run on an ubuntu-latest runner hosted by GitHub. For more information on these options see "Choosing the runner for a job."
+
+YAML
+    timeout-minutes: 60	Sets the maximum number of minutes to let the job run before it is automatically canceled. For more information, see timeout-minutes.
+
+YAML
+    strategy:	This section defines the build matrix for your jobs.
+YAML
+      fail-fast: false	Setting fail-fast to false prevents GitHub from cancelling all in-progress jobs if any matrix job fails.
+YAML
+      matrix:
+        test-group:
+          [
+            content,
+            graphql,
+            meta,
+            rendering,
+            routing,
+            unit,
+            linting,
+            translations,
+          ]	Creates a matrix named test-group, with an array of test groups. These values match the names of test groups that will be run by npm test.
+YAML
+    steps:	Groups together all the steps that will run as part of the test job. Each job in a workflow has its own steps section.
+YAML
+      - name: Check out repo
+        uses: actions/checkout@v3
+        with:
+          lfs: ${{ matrix.test-group == 'content' }}
+          persist-credentials: 'false'	The uses keyword tells the job to retrieve the action named actions/checkout. This is an action that checks out your repository and downloads it to the runner, allowing you to run actions against your code (such as testing tools). You must use the checkout action any time your workflow will run against the repository's code or you are using an action defined in the repository. Some extra options are provided to the action using the with key.
+YAML
+      - name: Figure out which docs-early-access branch to checkout, if internal repo
+        if: ${{ github.repository == 'github/docs-internal' }}
+        id: check-early-access
+        uses: actions/github-script@v6
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        with:
+          github-token: ${{ secrets.DOCUBOT_REPO_PAT }}
+          result-encoding: string
+          script: |
+            // If being run from a PR, this becomes 'my-cool-branch'.
+            // If run on main, with the `workflow_dispatch` action for
+            // example, the value becomes 'main'.
+            const { BRANCH_NAME } = process.env
+            try {
+              const response = await github.repos.getBranch({
+                owner: 'github',
+                repo: 'docs-early-access',
+                BRANCH_NAME,
+              })
+              console.log(`Using docs-early-access branch called '${BRANCH_NAME}'.`)
+              return BRANCH_NAME
+            } catch (err) {
+              if (err.status === 404) {
+                console.log(`There is no docs-early-access branch called '${BRANCH_NAME}' so checking out 'main' instead.`)
+                return 'main'
+              }
+              throw err
+            }	If the current repository is the github/docs-internal repository, this step uses the actions/github-script action to run a script to check if there is a branch called docs-early-access.
+YAML
+      - name: Check out docs-early-access too, if internal repo
+        if: ${{ github.repository == 'github/docs-internal' }}
+        uses: actions/checkout@v3
+        with:
+          repository: github/docs-early-access
+          token: ${{ secrets.DOCUBOT_REPO_PAT }}
+          path: docs-early-access
+          ref: ${{ steps.check-early-access.outputs.result }}	If the current repository is the github/docs-internal repository, this step checks out the branch from the github/docs-early-access that was identified in the previous step.
+YAML
+      - name: Merge docs-early-access repo's folders
+        if: ${{ github.repository == 'github/docs-internal' }}
+        run: |
+          mv docs-early-access/assets assets/images/early-access
+          mv docs-early-access/content content/early-access
+          mv docs-early-access/data data/early-access
+          rm -r docs-early-access	If the current repository is the github/docs-internal repository, this step uses the run keyword to execute shell commands to move the docs-early-access repository's folders into the main repository's folders.
+YAML
+      - name: Checkout LFS objects
+        run: git lfs checkout	This step runs a command to check out LFS objects from the repository.
+YAML
+      - name: Gather files changed
+        uses: trilom/file-changes-action@a6ca26c14274c33b15e6499323aac178af06ad4b
+        id: get_diff_files
+        with:
+          # So that `steps.get_diff_files.outputs.files` becomes
+          # a string like `foo.js path/bar.md`
+          output: ' '	This step uses the trilom/file-changes-action action to gather the files changed in the pull request, so they can be analyzed in the next step. This example is pinned to a specific version of the action, using the a6ca26c14274c33b15e6499323aac178af06ad4b SHA.
+YAML
+      - name: Insight into changed files
+        run: |
+          echo "${{ steps.get_diff_files.outputs.files }}" > get_diff_files.txt	This step runs a shell command that uses an output from the previous step to create a file containing the list of files changed in the pull request.
+YAML
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.14.x
+          cache: npm	This step uses the actions/setup-node action to install the specified version of the node software package on the runner, which gives you access to the npm command.
+YAML
+      - name: Install dependencies
+        run: npm ci	This step runs the npm ci shell command to install the npm software packages for the project.
+YAML
+      - name: Cache nextjs build
+        uses: actions/cache@v3
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package*.json') }}	This step uses the actions/cache action to cache the Next.js build, so that the workflow will attempt to retrieve a cache of the build, and not rebuild it from scratch every time. For more information, see "Caching dependencies to speed up workflows."
+
+YAML
+      - name: Run build script
+        run: npm run build	This step runs the build script.
+YAML
+      - name: Run tests
+        env:
+          DIFF_FILE: get_diff_files.txt
+          CHANGELOG_CACHE_FILE_PATH: tests/fixtures/changelog-feed.json
+        run: npm test -- tests/${{ matrix.test-group }}/	This step runs the tests using npm test, and the test matrix provides a different value for ${{ matrix.test-group }} for each job in the matrix. It uses the DIFF_FILE environment variable to know which files have changed, and uses the CHANGELOG_CACHE_FILE_PATH environment variable for the changelog cache file.
+Next steps
+To learn about GitHub Actions concepts, see "Understanding GitHub Actions."
+For more step-by-step guide for creating a basic workflow, see "Quickstart for GitHub Actions."
+If you're comfortable with the basics of GitHub Actions, you can learn about workflows and their features at "About workflows."
+
+
